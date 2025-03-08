@@ -27,8 +27,8 @@ func TestSimpleLimitLogic(t *testing.T) {
 
     taskInfo1 := &types.TaskInfo{
 		MessageTemplateId: 1,
-        Receiver: []string{"receiver1", "receiver2"},
-		ContentModel: "test-contentModel",
+        Receiver: []string{"receiver1-SP", "receiver2-SP"},
+		ContentModel: "test-contentModel-SP",
 		SendChannel: 1,
 		MsgType: 1,
     }

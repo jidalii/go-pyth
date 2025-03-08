@@ -21,12 +21,15 @@ const tokenBucketLimitTag = "TB_"
 var (
 	//go:embed slidingWindowScript.lua
 	tokenBucketLuaScript string
+	
 	tokenBucketScript    = redis.NewScript(tokenBucketLuaScript)
 )
 
 // TokenBucketLimitLogic rates limit the message frequency in a dynamic sliding window
 //
 // Currently used to deduplicate the identical message to the same receiver within a sliding window time
+// 
+// NOTE: the current implementation is using slidingWindowScript.lua script for simplicity
 type TokenBucketLimitLogic struct {
 	svcCtx *svc.ServiceContext
 }

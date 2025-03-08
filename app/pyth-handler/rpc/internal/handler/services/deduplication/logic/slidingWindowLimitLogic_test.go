@@ -16,37 +16,39 @@ import (
 	"pyth-go/app/pyth-handler/rpc/internal/svc"
 )
 
-func TestTokenBucketLimitLogic(t *testing.T) {
+func TestSlidingWindowLimitLogic(t *testing.T) {
 	var c config.Config
 	conf.MustLoad(*configFile, &c)
 	svcCtx := svc.NewServiceContext(c)
-	tokenBucketLogic := logic.NewTokenBucketLimitLogic(svcCtx)
+	slidingWindowLogic := logic.NewSlidingWindowLimitLogic(svcCtx)
 
 	taskInfo1 := &types.TaskInfo{
 		MessageTemplateId: 1,
-		Receiver:          []string{"receiver1-TB", "receiver2-TB"},
-		ContentModel:      "test-contentModel-TB",
+		Receiver:          []string{"receiver1-SW", "receiver2-SW"},
+		ContentModel:      "test-contentModel-SW",
 		SendChannel:       1,
 		MsgType:           1,
 	}
 	cfg1 := dtypes.DeduplicationCfg{
-		Num:  10,
-		Time: 30,
+		Num: 5,
 	}
-	contentDedupService := service.NewContentDeduplicationService(svcCtx, tokenBucketLogic)
+	contentDedupService := service.NewContentDeduplicationService(svcCtx, slidingWindowLogic)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	for i := 0; i < cfg1.Num; i++ {
-		dupReceivers, err := tokenBucketLogic.Filter(ctx, contentDedupService, taskInfo1, cfg1)
+		dupReceivers, err := slidingWindowLogic.Filter(ctx, contentDedupService, taskInfo1, cfg1)
 		assert.Nil(t, err)
-        t.Log(dupReceivers)
+		t.Log(dupReceivers)
 		assert.Equal(t, 0, len(dupReceivers))
-        
+
 	}
-	dupReceivers, err := tokenBucketLogic.Filter(ctx, contentDedupService, taskInfo1, cfg1)
-	assert.Nil(t, err)
-    t.Log(dupReceivers)
-	assert.Equal(t, len(taskInfo1.Receiver), len(dupReceivers))
+	dupReceivers, err := slidingWindowLogic.Filter(ctx, contentDedupService, taskInfo1, cfg1)
+
+	for _ = range 2 {
+		assert.Nil(t, err)
+		t.Log(dupReceivers)
+		assert.Equal(t, len(taskInfo1.Receiver), len(dupReceivers))
+	}
 }

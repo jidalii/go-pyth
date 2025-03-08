@@ -2,22 +2,20 @@ package logic
 
 import (
 	"context"
-	_ "embed"
 
-	"github.com/zeromicro/go-zero/core/logx"
-	
-	// "github.com/zeromicro/go-zero/core/stores/redis"
 	"github.com/zeromicro/go-zero/core/limit"
+	"github.com/zeromicro/go-zero/core/logx"
 
 	"pyth-go/app/pyth-common/types"
 	dtypes "pyth-go/app/pyth-handler/rpc/internal/handler/services/deduplication/types"
 	"pyth-go/app/pyth-handler/rpc/internal/svc"
 	"pyth-go/common/timex"
 )
+
 const slidingWindowLimitTag = "SW_"
 
 // SlidingWindowLimitLogic rate-limits the message freq in a given time window
-// 
+//
 // Currently used to rate limit daily message consumption
 type SlidingWindowLimitLogic struct {
 	svcCtx *svc.ServiceContext
@@ -28,11 +26,11 @@ func NewSlidingWindowLimitLogic(svcCtx *svc.ServiceContext) dtypes.LimitLogic {
 }
 
 // Return the receiver that reached the limit
-// 
+//
 // service: deduplication service
-// 
+//
 // taskInfo: task information
-// 
+//
 // cfg: deduplication configuration
 func (s *SlidingWindowLimitLogic) Filter(
 	ctx context.Context,
