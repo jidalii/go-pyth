@@ -1,5 +1,47 @@
 version: "3"
 services:
+  mysql:
+    image: mysql:8.0
+    # image: mysql/mysql-server:8.0.28
+    container_name: pyth-mysql
+    environment:
+      # Time zone EST (Change if needed)
+      TZ: America/New_York
+      # root password
+      MYSQL_ROOT_PASSWORD: PXDN93VRKUm8TeE7
+    ports:
+      - 33069:3306
+    volumes:
+      # Data mounting
+      - ./data/mysql/data:/var/lib/mysql
+      # Log
+    command:
+      # Modify the Mysql 8.0 default password strategy to the original strategy (MySQL8.0 to change its default strategy will cause the password to be unable to match)
+      --default-authentication-plugin=mysql_native_password
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_general_ci
+      --explicit_defaults_for_timestamp=true
+      --lower_case_table_names=1
+    privileged: true
+    restart: always
+    networks:
+      - pyth_net
+
+  redis:
+    image: redis:latest
+    container_name: redis
+    ports:
+      - 36379:6379
+    # environment:
+    #   TZ: Asia/Shanghai
+    volumes:
+      # 数据文件 - data files
+      - ./data/redis/data:/data:rw
+    command: "redis-server --requirepass G62m50oigInC30sf  --appendonly yes"
+    privileged: true
+    restart: always
+    networks:
+      - pyth_net
   kafka1:
     image: 'bitnami/kafka:3.9.0'
     container_name: pyth-kafka11
@@ -32,7 +74,7 @@ services:
       - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://host.docker.internal:9192,EXTERNAL://localhost:9194
       - KAFKA_BROKER_ID=1
     volumes:
-      - /Users/jidali/projects/go-pyth/data/kafka1/kafka/kraft:/bitnami/kafka
+      - /Users/jidali/projects/pyth-go/data/kafka1/kafka/kraft:/bitnami/kafka
     networks:
       - pyth_net
 
@@ -68,7 +110,7 @@ services:
       - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://host.docker.internal:9292,EXTERNAL://localhost:9294
       - KAFKA_BROKER_ID=2
     volumes:
-      - /Users/jidali/projects/go-pyth/data/kafka2/kafka/kraft:/bitnami/kafka
+      - /Users/jidali/projects/pyth-go/data/kafka2/kafka/kraft:/bitnami/kafka
     networks:
       - pyth_net
 
@@ -104,7 +146,7 @@ services:
       - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://host.docker.internal:9392,EXTERNAL://localhost:9394
       - KAFKA_BROKER_ID=3
     volumes:
-      - /Users/jidali/projects/go-pyth/data/kafka3/kafka/kraft:/bitnami/kafka
+      - /Users/jidali/projects/pyth-go/data/kafka3/kafka/kraft:/bitnami/kafka
     networks:
       - pyth_net
 
@@ -130,7 +172,7 @@ services:
   #     - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT
   #     - ALLOW_PLAINTEXT_LISTENER=yes
   #   volumes:
-  #     - /Users/jidali/projects/go-pyth/data/kafka-1/kafka/kraft:/bitnami/kafka
+  #     - /Users/jidali/projects/pyth-go/data/kafka-1/kafka/kraft:/bitnami/kafka
   #   depends_on:
   #     - zookeeper
   # kafka-2:
@@ -147,7 +189,7 @@ services:
   #     - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
   #     - ALLOW_PLAINTEXT_LISTENER=yes
   #   volumes:
-  #     - /Users/jidali/projects/go-pyth/data/kafka-2/kafka/kraft:/bitnami/kafka
+  #     - /Users/jidali/projects/pyth-go/data/kafka-2/kafka/kraft:/bitnami/kafka
   #   depends_on:
   #     - zookeeper
   
@@ -160,7 +202,7 @@ services:
       DYNAMIC_CONFIG_ENABLED: 'true'
       KAFKA_CLUSTERS_0_BOOTSTRAP_SERVERS: "pyth-kafka11:9092,pyth-kafka22:9092,pyth-kafka33:9092"
     # volumes:
-    #   - /Users/jidali/projects/go-pyth/data/config.yml:/etc/kafkaui/dynamic_config.yaml
+    #   - /Users/jidali/projects/pyth-go/data/config.yml:/etc/kafkaui/dynamic_config.yaml
     depends_on:
       - kafka1
       - kafka2
