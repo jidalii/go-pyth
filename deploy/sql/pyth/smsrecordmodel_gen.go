@@ -2,7 +2,7 @@
 // versions:
 //  goctl version: 1.7.6
 
-package app
+package pyth
 
 import (
 	"context"
@@ -11,6 +11,8 @@ import (
 	"strings"
 
 	"github.com/zeromicro/go-zero/core/stores/builder"
+	"github.com/zeromicro/go-zero/core/stores/cache"
+	"github.com/zeromicro/go-zero/core/stores/sqlc"
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
 	"github.com/zeromicro/go-zero/core/stringx"
 )
@@ -20,6 +22,8 @@ var (
 	smsRecordRows                = strings.Join(smsRecordFieldNames, ",")
 	smsRecordRowsExpectAutoSet   = strings.Join(stringx.Remove(smsRecordFieldNames, "`create_at`", "`create_time`", "`created_at`", "`update_at`", "`update_time`", "`updated_at`"), ",")
 	smsRecordRowsWithPlaceHolder = strings.Join(stringx.Remove(smsRecordFieldNames, "`id`", "`create_at`", "`create_time`", "`created_at`", "`update_at`", "`update_time`", "`updated_at`"), "=?,") + "=?"
+
+	cacheSmsRecordIdPrefix = "cache:smsRecord:id:"
 )
 
 type (
@@ -31,7 +35,7 @@ type (
 	}
 
 	defaultSmsRecordModel struct {
-		conn  sqlx.SqlConn
+		sqlc.CachedConn
 		table string
 	}
 
@@ -52,27 +56,33 @@ type (
 	}
 )
 
-func newSmsRecordModel(conn sqlx.SqlConn) *defaultSmsRecordModel {
+func newSmsRecordModel(conn sqlx.SqlConn, c cache.CacheConf, opts ...cache.Option) *defaultSmsRecordModel {
 	return &defaultSmsRecordModel{
-		conn:  conn,
-		table: "`sms_record`",
+		CachedConn: sqlc.NewConn(conn, c, opts...),
+		table:      "`sms_record`",
 	}
 }
 
 func (m *defaultSmsRecordModel) Delete(ctx context.Context, id int64) error {
-	query := fmt.Sprintf("delete from %s where `id` = ?", m.table)
-	_, err := m.conn.ExecCtx(ctx, query, id)
+	smsRecordIdKey := fmt.Sprintf("%s%v", cacheSmsRecordIdPrefix, id)
+	_, err := m.ExecCtx(ctx, func(ctx context.Context, conn sqlx.SqlConn) (result sql.Result, err error) {
+		query := fmt.Sprintf("delete from %s where `id` = ?", m.table)
+		return conn.ExecCtx(ctx, query, id)
+	}, smsRecordIdKey)
 	return err
 }
 
 func (m *defaultSmsRecordModel) FindOne(ctx context.Context, id int64) (*SmsRecord, error) {
-	query := fmt.Sprintf("select %s from %s where `id` = ? limit 1", smsRecordRows, m.table)
+	smsRecordIdKey := fmt.Sprintf("%s%v", cacheSmsRecordIdPrefix, id)
 	var resp SmsRecord
-	err := m.conn.QueryRowCtx(ctx, &resp, query, id)
+	err := m.QueryRowCtx(ctx, &resp, smsRecordIdKey, func(ctx context.Context, conn sqlx.SqlConn, v any) error {
+		query := fmt.Sprintf("select %s from %s where `id` = ? limit 1", smsRecordRows, m.table)
+		return conn.QueryRowCtx(ctx, v, query, id)
+	})
 	switch err {
 	case nil:
 		return &resp, nil
-	case sqlx.ErrNotFound:
+	case sqlc.ErrNotFound:
 		return nil, ErrNotFound
 	default:
 		return nil, err
@@ -80,15 +90,30 @@ func (m *defaultSmsRecordModel) FindOne(ctx context.Context, id int64) (*SmsReco
 }
 
 func (m *defaultSmsRecordModel) Insert(ctx context.Context, data *SmsRecord) (sql.Result, error) {
-	query := fmt.Sprintf("insert into %s (%s) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", m.table, smsRecordRowsExpectAutoSet)
-	ret, err := m.conn.ExecCtx(ctx, query, data.Id, data.MessageTemplateId, data.Phone, data.SupplierId, data.SupplierName, data.MsgContent, data.SeriesId, data.ChargingNum, data.ReportContent, data.Status, data.SendDate, data.Created, data.Updated)
+	smsRecordIdKey := fmt.Sprintf("%s%v", cacheSmsRecordIdPrefix, data.Id)
+	ret, err := m.ExecCtx(ctx, func(ctx context.Context, conn sqlx.SqlConn) (result sql.Result, err error) {
+		query := fmt.Sprintf("insert into %s (%s) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", m.table, smsRecordRowsExpectAutoSet)
+		return conn.ExecCtx(ctx, query, data.Id, data.MessageTemplateId, data.Phone, data.SupplierId, data.SupplierName, data.MsgContent, data.SeriesId, data.ChargingNum, data.ReportContent, data.Status, data.SendDate, data.Created, data.Updated)
+	}, smsRecordIdKey)
 	return ret, err
 }
 
 func (m *defaultSmsRecordModel) Update(ctx context.Context, data *SmsRecord) error {
-	query := fmt.Sprintf("update %s set %s where `id` = ?", m.table, smsRecordRowsWithPlaceHolder)
-	_, err := m.conn.ExecCtx(ctx, query, data.MessageTemplateId, data.Phone, data.SupplierId, data.SupplierName, data.MsgContent, data.SeriesId, data.ChargingNum, data.ReportContent, data.Status, data.SendDate, data.Created, data.Updated, data.Id)
+	smsRecordIdKey := fmt.Sprintf("%s%v", cacheSmsRecordIdPrefix, data.Id)
+	_, err := m.ExecCtx(ctx, func(ctx context.Context, conn sqlx.SqlConn) (result sql.Result, err error) {
+		query := fmt.Sprintf("update %s set %s where `id` = ?", m.table, smsRecordRowsWithPlaceHolder)
+		return conn.ExecCtx(ctx, query, data.MessageTemplateId, data.Phone, data.SupplierId, data.SupplierName, data.MsgContent, data.SeriesId, data.ChargingNum, data.ReportContent, data.Status, data.SendDate, data.Created, data.Updated, data.Id)
+	}, smsRecordIdKey)
 	return err
+}
+
+func (m *defaultSmsRecordModel) formatPrimary(primary any) string {
+	return fmt.Sprintf("%s%v", cacheSmsRecordIdPrefix, primary)
+}
+
+func (m *defaultSmsRecordModel) queryPrimary(ctx context.Context, conn sqlx.SqlConn, v, primary any) error {
+	query := fmt.Sprintf("select %s from %s where `id` = ? limit 1", smsRecordRows, m.table)
+	return conn.QueryRowCtx(ctx, v, query, primary)
 }
 
 func (m *defaultSmsRecordModel) tableName() string {

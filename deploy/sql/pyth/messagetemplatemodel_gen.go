@@ -2,7 +2,7 @@
 // versions:
 //  goctl version: 1.7.6
 
-package app
+package pyth
 
 import (
 	"context"
@@ -11,6 +11,8 @@ import (
 	"strings"
 
 	"github.com/zeromicro/go-zero/core/stores/builder"
+	"github.com/zeromicro/go-zero/core/stores/cache"
+	"github.com/zeromicro/go-zero/core/stores/sqlc"
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
 	"github.com/zeromicro/go-zero/core/stringx"
 )
@@ -20,6 +22,8 @@ var (
 	messageTemplateRows                = strings.Join(messageTemplateFieldNames, ",")
 	messageTemplateRowsExpectAutoSet   = strings.Join(stringx.Remove(messageTemplateFieldNames, "`id`", "`create_at`", "`create_time`", "`created_at`", "`update_at`", "`update_time`", "`updated_at`"), ",")
 	messageTemplateRowsWithPlaceHolder = strings.Join(stringx.Remove(messageTemplateFieldNames, "`id`", "`create_at`", "`create_time`", "`created_at`", "`update_at`", "`update_time`", "`updated_at`"), "=?,") + "=?"
+
+	cacheMessageTemplateIdPrefix = "cache:messageTemplate:id:"
 )
 
 type (
@@ -31,7 +35,7 @@ type (
 	}
 
 	defaultMessageTemplateModel struct {
-		conn  sqlx.SqlConn
+		sqlc.CachedConn
 		table string
 	}
 
@@ -64,27 +68,33 @@ type (
 	}
 )
 
-func newMessageTemplateModel(conn sqlx.SqlConn) *defaultMessageTemplateModel {
+func newMessageTemplateModel(conn sqlx.SqlConn, c cache.CacheConf, opts ...cache.Option) *defaultMessageTemplateModel {
 	return &defaultMessageTemplateModel{
-		conn:  conn,
-		table: "`message_template`",
+		CachedConn: sqlc.NewConn(conn, c, opts...),
+		table:      "`message_template`",
 	}
 }
 
 func (m *defaultMessageTemplateModel) Delete(ctx context.Context, id int64) error {
-	query := fmt.Sprintf("delete from %s where `id` = ?", m.table)
-	_, err := m.conn.ExecCtx(ctx, query, id)
+	messageTemplateIdKey := fmt.Sprintf("%s%v", cacheMessageTemplateIdPrefix, id)
+	_, err := m.ExecCtx(ctx, func(ctx context.Context, conn sqlx.SqlConn) (result sql.Result, err error) {
+		query := fmt.Sprintf("delete from %s where `id` = ?", m.table)
+		return conn.ExecCtx(ctx, query, id)
+	}, messageTemplateIdKey)
 	return err
 }
 
 func (m *defaultMessageTemplateModel) FindOne(ctx context.Context, id int64) (*MessageTemplate, error) {
-	query := fmt.Sprintf("select %s from %s where `id` = ? limit 1", messageTemplateRows, m.table)
+	messageTemplateIdKey := fmt.Sprintf("%s%v", cacheMessageTemplateIdPrefix, id)
 	var resp MessageTemplate
-	err := m.conn.QueryRowCtx(ctx, &resp, query, id)
+	err := m.QueryRowCtx(ctx, &resp, messageTemplateIdKey, func(ctx context.Context, conn sqlx.SqlConn, v any) error {
+		query := fmt.Sprintf("select %s from %s where `id` = ? limit 1", messageTemplateRows, m.table)
+		return conn.QueryRowCtx(ctx, v, query, id)
+	})
 	switch err {
 	case nil:
 		return &resp, nil
-	case sqlx.ErrNotFound:
+	case sqlc.ErrNotFound:
 		return nil, ErrNotFound
 	default:
 		return nil, err
@@ -92,15 +102,30 @@ func (m *defaultMessageTemplateModel) FindOne(ctx context.Context, id int64) (*M
 }
 
 func (m *defaultMessageTemplateModel) Insert(ctx context.Context, data *MessageTemplate) (sql.Result, error) {
-	query := fmt.Sprintf("insert into %s (%s) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", m.table, messageTemplateRowsExpectAutoSet)
-	ret, err := m.conn.ExecCtx(ctx, query, data.Name, data.AuditStatus, data.FlowId, data.MsgStatus, data.CronTaskId, data.CronCrowdPath, data.ExpectPushTime, data.IdType, data.SendChannel, data.TemplateType, data.MsgType, data.ShieldType, data.MsgContent, data.SendAccount, data.Creator, data.Updator, data.Auditor, data.Team, data.Proposer, data.IsDeleted, data.Created, data.Updated, data.DeduplicationConfig, data.TemplateSn)
+	messageTemplateIdKey := fmt.Sprintf("%s%v", cacheMessageTemplateIdPrefix, data.Id)
+	ret, err := m.ExecCtx(ctx, func(ctx context.Context, conn sqlx.SqlConn) (result sql.Result, err error) {
+		query := fmt.Sprintf("insert into %s (%s) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", m.table, messageTemplateRowsExpectAutoSet)
+		return conn.ExecCtx(ctx, query, data.Name, data.AuditStatus, data.FlowId, data.MsgStatus, data.CronTaskId, data.CronCrowdPath, data.ExpectPushTime, data.IdType, data.SendChannel, data.TemplateType, data.MsgType, data.ShieldType, data.MsgContent, data.SendAccount, data.Creator, data.Updator, data.Auditor, data.Team, data.Proposer, data.IsDeleted, data.Created, data.Updated, data.DeduplicationConfig, data.TemplateSn)
+	}, messageTemplateIdKey)
 	return ret, err
 }
 
 func (m *defaultMessageTemplateModel) Update(ctx context.Context, data *MessageTemplate) error {
-	query := fmt.Sprintf("update %s set %s where `id` = ?", m.table, messageTemplateRowsWithPlaceHolder)
-	_, err := m.conn.ExecCtx(ctx, query, data.Name, data.AuditStatus, data.FlowId, data.MsgStatus, data.CronTaskId, data.CronCrowdPath, data.ExpectPushTime, data.IdType, data.SendChannel, data.TemplateType, data.MsgType, data.ShieldType, data.MsgContent, data.SendAccount, data.Creator, data.Updator, data.Auditor, data.Team, data.Proposer, data.IsDeleted, data.Created, data.Updated, data.DeduplicationConfig, data.TemplateSn, data.Id)
+	messageTemplateIdKey := fmt.Sprintf("%s%v", cacheMessageTemplateIdPrefix, data.Id)
+	_, err := m.ExecCtx(ctx, func(ctx context.Context, conn sqlx.SqlConn) (result sql.Result, err error) {
+		query := fmt.Sprintf("update %s set %s where `id` = ?", m.table, messageTemplateRowsWithPlaceHolder)
+		return conn.ExecCtx(ctx, query, data.Name, data.AuditStatus, data.FlowId, data.MsgStatus, data.CronTaskId, data.CronCrowdPath, data.ExpectPushTime, data.IdType, data.SendChannel, data.TemplateType, data.MsgType, data.ShieldType, data.MsgContent, data.SendAccount, data.Creator, data.Updator, data.Auditor, data.Team, data.Proposer, data.IsDeleted, data.Created, data.Updated, data.DeduplicationConfig, data.TemplateSn, data.Id)
+	}, messageTemplateIdKey)
 	return err
+}
+
+func (m *defaultMessageTemplateModel) formatPrimary(primary any) string {
+	return fmt.Sprintf("%s%v", cacheMessageTemplateIdPrefix, primary)
+}
+
+func (m *defaultMessageTemplateModel) queryPrimary(ctx context.Context, conn sqlx.SqlConn, v, primary any) error {
+	query := fmt.Sprintf("select %s from %s where `id` = ? limit 1", messageTemplateRows, m.table)
+	return conn.QueryRowCtx(ctx, v, query, primary)
 }
 
 func (m *defaultMessageTemplateModel) tableName() string {

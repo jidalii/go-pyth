@@ -1,6 +1,9 @@
-package app
+package pyth
 
-import "github.com/zeromicro/go-zero/core/stores/sqlx"
+import (
+	"github.com/zeromicro/go-zero/core/stores/cache"
+	"github.com/zeromicro/go-zero/core/stores/sqlx"
+)
 
 var _ SmsRecordModel = (*customSmsRecordModel)(nil)
 
@@ -9,7 +12,6 @@ type (
 	// and implement the added methods in customSmsRecordModel.
 	SmsRecordModel interface {
 		smsRecordModel
-		withSession(session sqlx.Session) SmsRecordModel
 	}
 
 	customSmsRecordModel struct {
@@ -18,12 +20,8 @@ type (
 )
 
 // NewSmsRecordModel returns a model for the database table.
-func NewSmsRecordModel(conn sqlx.SqlConn) SmsRecordModel {
+func NewSmsRecordModel(conn sqlx.SqlConn, c cache.CacheConf, opts ...cache.Option) SmsRecordModel {
 	return &customSmsRecordModel{
-		defaultSmsRecordModel: newSmsRecordModel(conn),
+		defaultSmsRecordModel: newSmsRecordModel(conn, c, opts...),
 	}
-}
-
-func (m *customSmsRecordModel) withSession(session sqlx.Session) SmsRecordModel {
-	return NewSmsRecordModel(sqlx.NewSqlConnFromSession(session))
 }

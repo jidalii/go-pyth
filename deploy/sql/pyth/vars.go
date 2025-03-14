@@ -1,4 +1,4 @@
-package app
+package pyth
 
 import "github.com/zeromicro/go-zero/core/stores/sqlx"
 
