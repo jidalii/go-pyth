@@ -42,7 +42,6 @@ func TestSlidingWindowLimitLogic(t *testing.T) {
 		assert.Nil(t, err)
 		t.Log(dupReceivers)
 		assert.Equal(t, 0, len(dupReceivers))
-
 	}
 	dupReceivers, err := slidingWindowLogic.Filter(ctx, contentDedupService, taskInfo1, cfg1)
 

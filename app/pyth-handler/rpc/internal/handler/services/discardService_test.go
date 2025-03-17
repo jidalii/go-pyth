@@ -17,7 +17,7 @@ import (
 	"pyth-go/common/zutils/arrayUtils"
 )
 
-var configFile = flag.String("f", "../../../etc/pythhandler.yaml", "the config file")
+var configFile = flag.String("f", "../../../etc/pythhandler_test.yaml", "the test config file")
 
 const discardMessageKey = "discard_msg"
 

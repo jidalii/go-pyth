@@ -9,8 +9,6 @@ import (
 	"github.com/zeromicro/go-zero/core/conf"
 	"github.com/zeromicro/go-zero/core/jsonx"
 
-	// "github.com/zeromicro/go-zero/core/stores/redis"
-
 	"pyth-go/app/pyth-common/types"
 	"pyth-go/app/pyth-handler/rpc/internal/config"
 	"pyth-go/app/pyth-handler/rpc/internal/handler/services"

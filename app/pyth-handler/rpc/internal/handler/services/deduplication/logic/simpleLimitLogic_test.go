@@ -17,7 +17,7 @@ import (
 	"pyth-go/app/pyth-handler/rpc/internal/svc"
 )
 
-var configFile = flag.String("f", "../../../../../etc/pythhandler.yaml", "the config file")
+var configFile = flag.String("f", "../../../../../etc/pythhandler_test.yaml", "the test config file")
 
 func TestSimpleLimitLogic(t *testing.T) {
 	var c config.Config
