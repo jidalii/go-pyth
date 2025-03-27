@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+option go_package = "./pythhanlder";
+
+package pythHandler;
+
+message PingRequest {}
+message PongResponse {}
+
+service PythHandler {
+  rpc Ping(PingRequest) returns(PongResponse);
+}

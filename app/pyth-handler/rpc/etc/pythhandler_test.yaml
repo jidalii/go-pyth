@@ -1,0 +1,35 @@
+Name: pythhandler-rpc
+ListenOn: 0.0.0.0:2014
+Mode: dev
+
+Log:
+  ServiceName: pythhandler-rpc
+  Mode: console
+  Level: debug
+  Encoding: plain
+  # Encoding: json
+
+# Etcd:
+#   Hosts:
+#   - 127.0.0.1:2379
+#   Key: pythhandler.rpc
+Redis:
+  Host: localhost:36379
+  Type: node
+  Pass: G62m50oigInC30sf
+  Key: pythHandler-rpc
+Cache:
+  - Host: localhost:36379
+    Pass: G62m50oigInC30sf
+DB:
+  DataSource: root:PXDN93VRKUm8TeE7@tcp(localhost:33069)/pythTest?charset=utf8mb4&parseTime=true
+
+Consumer:
+  Addrs:
+    - localhost:9194
+    - localhost:9294
+    - localhost:9394
+  GroupId: test-group
+  GroupTopics:
+    - test-topic
+  ConsumerNumber: 3

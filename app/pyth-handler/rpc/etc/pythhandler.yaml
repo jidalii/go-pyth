@@ -1,0 +1,20 @@
+Name: pythhandler-rpc
+ListenOn: 0.0.0.0:2014
+Mode: dev
+Log:
+  Level: debug
+  Encoding: plain
+Etcd:
+  Hosts:
+  - 127.0.0.1:2379
+  Key: pythhandler.rpc
+Redis:
+  Host: localhost:36379
+  Type: node
+  Pass: G62m50oigInC30sf
+  Key: pythHandler-rpc
+Cache:
+  - Host: localhost:36379
+    Pass: G62m50oigInC30sf
+DB:
+  DataSource: root:PXDN93VRKUm8TeE7@tcp(mysql:33069)/pyth?charset=utf8mb4&parseTime=true
