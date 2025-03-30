@@ -19,11 +19,13 @@ type ConsumerGroupConfig struct {
 	ConsumerNumber int
 }
 
-func NewConsumer(ctx context.Context, groupCfg ConsumerGroupConfig) MQConsumer {
+func NewConsumer(groupCfg ConsumerGroupConfig) MQConsumer {
 	r := kafka.NewReader(kafka.ReaderConfig{
 		Brokers:     groupCfg.Addrs,
 		GroupTopics: groupCfg.GroupTopics,
 		GroupID:     groupCfg.GroupID,
+		MinBytes:    10e3,
+		MaxBytes:    10e3,
 	})
 	logx.Infof("Consumer created for topic {%+v}", groupCfg.GroupTopics)
 	return MQConsumer{
@@ -42,7 +44,7 @@ func (c *MQConsumer) Start(ctx context.Context, fn func(m kafka.Message) error) 
 		}
 		m, err := r.FetchMessage(ctx)
 		if err != nil {
-			logx.Info("MQConsumer: failed to fetch message ", logx.Field("error", err))
+			logx.Errorw("MQConsumer: failed to fetch message ", logx.Field("error", err))
 			continue
 		}
 		if err := fn(m); err != nil {
@@ -64,7 +66,7 @@ func (c *MQConsumer) Start(ctx context.Context, fn func(m kafka.Message) error) 
 	}
 }
 
-func (c *MQConsumer) Close() error {
+func (c *MQConsumer) Stop() error {
 	return c.Reader.Close()
 }
 
@@ -73,7 +75,7 @@ type MQConsumerGroup struct {
 	GroupCfg  ConsumerGroupConfig
 }
 
-func NewConsumerGroup(ctx context.Context, groupCfg ConsumerGroupConfig) MQConsumerGroup {
+func NewConsumerGroup(groupCfg ConsumerGroupConfig) MQConsumerGroup {
 	consumers := make([]*MQConsumer, groupCfg.ConsumerNumber)
 	for i := 0; i < groupCfg.ConsumerNumber; i++ {
 		r := kafka.NewReader(kafka.ReaderConfig{
@@ -100,9 +102,9 @@ func (cg *MQConsumerGroup) Start(ctx context.Context, fn func(m kafka.Message) e
 	}
 }
 
-func (cg *MQConsumerGroup) Close() {
+func (cg *MQConsumerGroup) Stop() {
 	for _, c := range cg.Consumers {
-		err := c.Close()
+		err := c.Stop()
 		if err != nil {
 			logx.Errorw("MQCOnsumerGroup close consumer ", logx.Field("error", err))
 		}

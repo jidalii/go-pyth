@@ -20,13 +20,18 @@ var groupCfg = consumer.ConsumerGroupConfig{
 	ConsumerNumber: 3,
 }
 
+var producerCfg = producer.MQProducerConf{
+	Addrs: groupCfg.Addrs,
+	Topic: "test-topic",
+}
+
 func TestStartConsumer(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
 	defer cancel()
 
 	// init producer and consumer
-	producer := producer.NewProducer(ctx, groupCfg.Addrs, "test-topic")
-	consumer := consumer.NewConsumer(ctx, groupCfg)
+	producer := producer.NewProducer(producerCfg)
+	consumer := consumer.NewConsumer(groupCfg)
 
 	// expect x messages
 	msgNum := 10
@@ -48,6 +53,7 @@ func TestStartConsumer(t *testing.T) {
 
 	// start consumer
 	go consumer.Start(ctx, fn)
+	defer consumer.Stop()
 
 	// produce x messages
 	msgs := make([]kafka.Message, msgNum)
@@ -57,7 +63,7 @@ func TestStartConsumer(t *testing.T) {
 		}
 		msgs[i] = msg
 	}
-	if err := producer.Do(ctx, msgs); err != nil {
+	if err := producer.Do(ctx, msgs...); err != nil {
 		t.Fatalf("failed to produce message: %v", err)
 	}
 
@@ -94,12 +100,12 @@ func TestStartConsumer(t *testing.T) {
 }
 
 func TestStartConsumerGroup(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 40*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	// init producer and consumer
-	producer := producer.NewProducer(ctx, groupCfg.Addrs, "test-topic")
-	consumerGroup := consumer.NewConsumerGroup(ctx, groupCfg)
+	producer := producer.NewProducer(producerCfg)
+	consumerGroup := consumer.NewConsumerGroup(groupCfg)
 
 	msgNum := 10
 	// expect x messages
@@ -121,6 +127,7 @@ func TestStartConsumerGroup(t *testing.T) {
 
 	// start consumer
 	go consumerGroup.Start(ctx, fn)
+	defer consumerGroup.Stop()
 
 	// produce x messages
 	msgs := make([]kafka.Message, msgNum)
@@ -130,7 +137,7 @@ func TestStartConsumerGroup(t *testing.T) {
 		}
 		msgs[i] = msg
 	}
-	if err := producer.Do(ctx, msgs); err != nil {
+	if err := producer.Do(ctx, msgs...); err != nil {
 		t.Fatalf("failed to produce message: %v", err)
 	}
 
