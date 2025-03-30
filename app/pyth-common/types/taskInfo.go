@@ -2,15 +2,15 @@ package types
 
 type TaskInfo struct {
 	MessageTemplateId int64       `json:"messageTemplateId"`
-	// BusinessId        int64       `json:"businessId"`
+	BusinessId        int64       `json:"businessId"`
 	Receiver          []string    `json:"receiver"`
-	// IdType            int         `json:"idType"`
+	IdType            int         `json:"idType"`
 	SendChannel       int         `json:"sendChannel"`
-	// TemplateType      int         `json:"templateType"`
+	TemplateType      int         `json:"templateType"`
 	MsgType           int         `json:"msgType"`
 	ShieldType        int         `json:"shieldType"`
 	ContentModel      interface{} `json:"contentModel"`
-	// SendAccount       int         `json:"sendAccount"`
+	SendAccount       int64       `json:"sendAccount"`
 }
 
 type SendTaskModel struct {

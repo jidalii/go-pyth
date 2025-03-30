@@ -2,6 +2,7 @@ package utils
 
 import (
 	"fmt"
+	"strings"
 
 	"pyth-go/app/pyth-common/enums/chanType"
 	"pyth-go/app/pyth-common/enums/msgType"
@@ -9,6 +10,16 @@ import (
 )
 
 const chanBusiness = "pythBusiness"
+
+//	ReplaceByMap returns a copy of `origin`,
+//
+// which is replaced by a map in unordered way, case-sensitively.
+func ReplaceByMap(origin string, replaces map[string]string) string {
+	for k, v := range replaces {
+		origin = strings.Replace(origin, "{$"+k+"}", v, -1)
+	}
+	return origin
+}
 
 // Get groupId based on taskInfo
 func GetGroupIdByTaskInfo(info types.TaskInfo) string {
