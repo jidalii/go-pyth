@@ -24,16 +24,15 @@ type TaskExecutor struct {
 }
 
 func NewTaskExecutor(svcCtx *svc.ServiceContext, isGroup bool) *TaskExecutor {
-	ctx := context.Background()
 	executor := &TaskExecutor{
 		svcCtx:  svcCtx,
 		isGroup: isGroup,
 	}
 	if isGroup {
-		consumerGroup := consumer.NewConsumerGroup(ctx, svcCtx.Config.Consumer)
+		consumerGroup := consumer.NewConsumerGroup(svcCtx.Config.Consumer)
 		executor.ConsumerGroup = &consumerGroup
 	} else {
-		consumer := consumer.NewConsumer(ctx, svcCtx.Config.Consumer)
+		consumer := consumer.NewConsumer(svcCtx.Config.Consumer)
 		executor.Consumer = &consumer
 	}
 	return executor
@@ -43,8 +42,8 @@ func (t *TaskExecutor) Start() {
     ctx := context.Background()
 	if t.isGroup {
 		t.ConsumerGroup.Start(ctx, t.OnMessage)
-	} else if t.Consumer != nil {
-		t.Consumer.Start(ctx, t.OnMessage)
+	} else {
+		go t.Consumer.Start(ctx, t.OnMessage)
 	}
 }
 
@@ -67,10 +66,10 @@ func (t *TaskExecutor) OnMessage(m kafka.Message) error {
 	return nil
 }
 
-func (t *TaskExecutor) Close() {
+func (t *TaskExecutor) Stop() {
 	if t.isGroup {
-		t.ConsumerGroup.Close()
+		t.ConsumerGroup.Stop()
 	} else if t.Consumer != nil {
-		t.Consumer.Close()
+		t.Consumer.Stop()
 	}
 }

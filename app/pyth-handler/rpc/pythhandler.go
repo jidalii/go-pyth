@@ -26,6 +26,9 @@ func main() {
 	conf.MustLoad(*configFile, &c)
 	ctx := svc.NewServiceContext(c)
 
+	serviceGroup := service.NewServiceGroup()
+	defer serviceGroup.Stop()
+
 	s := zrpc.MustNewServer(c.RpcServerConf, func(grpcServer *grpc.Server) {
 		pythhanlder.RegisterPythHandlerServer(grpcServer, server.NewPythHandlerServer(ctx))
 
@@ -35,10 +38,10 @@ func main() {
 	})
 	defer s.Stop()
 
-	executor := handler.NewTaskExecutor(ctx, true)
-	defer executor.Close()
-	executor.Start()
+	serviceGroup.Add(s)
+	serviceGroup.Add(handler.NewTaskExecutor(ctx, true))
+
 
 	fmt.Printf("Starting rpc server at %s...\n", c.ListenOn)
-	s.Start()
+	serviceGroup.Start()
 }
